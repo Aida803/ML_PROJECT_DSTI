@@ -36,46 +36,58 @@ ML_PROJECT_DSTI/
 6. Encode authors and publishers by frequency and ordinal value; group languages into
    five buckets and one-hot encode.
 7. Drop redundant and weakly correlated features, leaving 21.
-8. Compare linear regression, random forest and gradient boosting on an 80/20 split.
-9. Validate the chosen model with 5-fold cross-validation and save it as a bundle.
+8. Compare a mean baseline, linear regression, gradient boosting and a random forest
+   on an 80/20 split, all at default settings.
+9. Tune the winning model's `max_features` by cross-validation on the training set only,
+   leaving the test set untouched during selection.
+10. Validate the tuned model with 5-fold cross-validation and save it as a bundle.
 
 
 ## Run Locally
 
 ```powershell
+git clone https://github.com/Aida803/ML_PROJECT_DSTI.git
+cd ML_PROJECT_DSTI
 conda create -n bookrating python=3.12
 conda activate bookrating
 pip install -r requirements.txt
 streamlit run App/app.py
 ```
 
-The app opens at `localhost:8501`. Enter a book's metadata and it returns a predicted
-rating out of 5.
+The app opens at `localhost:8501`. The first launch takes a few seconds while the
+compressed model loads. Enter a book's metadata and it returns a predicted rating out
+of 5.
 
 
 ## Results
 
-The dataset contains 11,128 books, reduced to 11,101 after cleaning, with 21 engineered
+The dataset contains 11,127 books, reduced to 11,101 after cleaning, with 21 engineered
 features.
 
 | Model | R² | MAE |
 |---|---|---|
+| Baseline (always predict the mean) | −0.003 | 0.227 |
 | Linear Regression | 0.132 | 0.211 |
-| **Random Forest (200 trees)** | **0.173** | **0.198** |
 | Gradient Boosting | 0.131 | 0.202 |
+| Random Forest, default settings | 0.172 | 0.198 |
+| **Random Forest, `max_features='sqrt'`** | **0.216** | **0.194** |
 
-- Selected model: **Random Forest**
-- 5-fold cross-validated R²: **0.134 ± 0.024**
-- Most important features: `log_ratings` (0.125), `num_pages` (0.124),
-  `rev_per_rating` (0.118), `publisher_ord` (0.116)
+- Selected model: **Random Forest (200 trees, `max_features='sqrt'`)**
+- 5-fold cross-validated R²: **0.152 ± 0.021**
+- Improvement over the mean baseline: **14.6% in MAE**
+- Most important features: `num_pages` (0.116), `rev_per_rating` (0.116),
+  `log_ratings` (0.112), `title_chars` (0.102)
+
+Restricting `max_features` to `'sqrt'` decorrelates the trees and was selected by
+cross-validation on the training set, raising test R² from 0.172 to 0.216.
 
 
 ## Limitations
 
 - The dataset contains no genre, description or content features, which are likely the
   strongest real predictors of a book's rating.
-- The two most important features derive from ratings the book has already received, so
-  the model is weakest on unrated books — its intended use case.
+- Two of the three most important features derive from ratings the book has already
+  received, so the model is weakest on unrated books — its intended use case.
 - 5.3% of rows share a title and author with another edition. Because the split is
   random, the same work can appear in both training and test sets, making the reported
   metrics slightly optimistic.
